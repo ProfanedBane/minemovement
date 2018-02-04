@@ -1,6 +1,9 @@
 --[[
 Airdash manager
 ]]
+
+--TODO: JUICE THIS BADBOY UP
+
 COOLDOWNTIME = 1
 DASHDISTANCE = 10 -- In blocks
 
@@ -52,23 +55,26 @@ function doBoost(playerName)
 		local dash = vector.multiply(playerCamDir, DASHDISTANCE)
 		
 		-- Check if we hit anything on the way
+		local testPos = playerPos
+		testPos.y = testPos.y + 1.5
 		local landPoint = vector.add(dash, playerPos)
 		local lineSight, lineLand = minetest.line_of_sight(playerPos, landPoint, 1)
 		if lineSight == false then
 			local vectorDiff = vector.subtract(playerPos, lineLand)
 			vectorDiff = vector.length(vectorDiff) - 1
+			minetest.chat_send_all(tostring(vectorDiff))
 			if vectorDiff <= 0 then
 				return false
 			end
-			dash = vector.multiply(playerCamDir, (vectorDiff))
+			dash = vector.multiply(playerCamDir, vectorDiff)
 		end
 		
 		-- Sometimes the game spawns us below where we gotta be, this tries to check for that
 		local yTest = dash
-		yTest.y = yTest.y - 1.5
+		yTest.y = yTest.y - 1.1
 		
 		if minetest.get_node(yTest) ~= "default:air" then
-			dash.y = dash.y + 1.5
+			dash.y = dash.y + 1.1
 		end
 		
 		dash = vector.add(dash, playerPos)
@@ -100,12 +106,13 @@ end
 
 function doMove(playerName, jump, endPos)
 	local player = minetest.get_player_by_name(playerName)
+	
 	if players[playerName] then
+		if vector.equals(jump, endPos) then
+			player:set_physics_override({gravity=1}) -- To reset the physics set before SmoothMove()
+		end
 		player:move_to(jump, false)
 	end
-	
-	if vector.equals(jump, endPos) then
-		player:set_physics_override({gravity=1}) -- To reset the physics set before SmoothMove()
-	end
+
 end
 	
