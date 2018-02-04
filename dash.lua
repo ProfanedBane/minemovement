@@ -10,7 +10,7 @@ minetest.register_on_joinplayer(function(player)
 	local playerName = player:get_player_name()
 
 	players[playerName] = {
-		lastBoost = 0, 
+		lastBoost = 0 
 	}
 end)
 
