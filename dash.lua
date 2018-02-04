@@ -73,13 +73,14 @@ function doBoost(playerName)
 		
 		dash = vector.add(dash, playerPos)
 		player:set_physics_override({gravity=0.3}) -- To lessen stutter mid dash
-		smoothMove(playerName, dash, 3, 0.4)
+		smoothMove(playerName, dash, 30, 0.4)
 		return true
 	end
 	return false
 end
 
---Interpolate move_to()
+-- Interpolate move_to()
+-- Input is player to move, position to move to, keyframes, and time delay
 function smoothMove(playerName, pos, steps, delay)
 	local player = minetest.get_player_by_name(playerName)
 	
