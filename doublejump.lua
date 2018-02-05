@@ -4,8 +4,10 @@ doublejump manager
 
 local players = {}
 
-JUMPTIME = 0.2
+JUMPTIME = 0.1
 EYEHEIGHT = 0.2
+GRAVITYACCEL = 20
+JUMPVEL = 20
 
 minetest.register_on_joinplayer(function(player)
 	local playerName = player:get_player_name()
@@ -13,7 +15,8 @@ minetest.register_on_joinplayer(function(player)
 	players[playerName] = {
 		doubleJumpTrigger = false,
 		doubleJumped = false,
-		jumpRelease = false
+		jumpRelease = false,
+		isDoubleJumping = false
 	}
 end)
 
@@ -30,6 +33,8 @@ minetest.register_globalstep(function(dtime)
 		if player ~= nil then
 			local playerVelocity = player:get_player_velocity()
 			local yVelocity = playerVelocity.y
+
+			--minetest.chat_send_all(tostring(yVelocity))
 			
 			local playerPos = player:get_pos()
 			local checkPos = player:get_pos()
@@ -47,8 +52,9 @@ minetest.register_globalstep(function(dtime)
 				players[playerName]["jumpRelease"] = false
 			end
 			
-			if player:get_player_control()["jump"] and players[playerName]["jumpRelease"] == true and players[playerName]["doubleJumped"] == false then
+			if player:get_player_control()["jump"] and players[playerName]["jumpRelease"] == true and players[playerName]["doubleJumped"] == false and players[playerName]["isDoubleJumping"] == false then
 				players[playerName]["doubleJumped"] = true
+				players[playerName]["isDoubleJumping"] = true
 				doubleJump(playerName)
 			end
 			
@@ -64,7 +70,26 @@ end)
 function doubleJump(playerName)
 	local player = minetest.get_player_by_name(playerName)
 	if players[playerName] then
-		player:set_physics_override({gravity=-3}) -- To lessen stutter mid dash
+		local playerVelocity = player:get_player_velocity()
+		local yVelocity = playerVelocity.y
+		
+		local gravActual = GRAVITYACCEL * JUMPTIME
+		local gravToZero = yVelocity / gravActual
+		
+		if math.floor(yVelocity + 0.5) == 0 then
+			gravToZero = 0
+		end
+		
+		minetest.chat_send_all(tostring(yVelocity))
+		minetest.chat_send_all(tostring(gravToZero))
+		
+		local jumpMod = -JUMPVEL/gravActual
+		local finalGrav = jumpMod + gravToZero
+		
+		--minetest.chat_send_all(tostring(jumpMod))
+		minetest.chat_send_all(tostring(finalGrav))
+		
+		player:set_physics_override({gravity=finalGrav}) -- To lessen stutter mid dash
 		minetest.after(JUMPTIME, endJump, playerName)
 		return true
 	end
@@ -74,6 +99,10 @@ end
 function endJump(playerName)
 	local player = minetest.get_player_by_name(playerName)
 	if players[playerName] then
+		players[playerName]["isDoubleJumping"] = false
+		local playerVelocity = player:get_player_velocity()
+		local yVelocity = playerVelocity.y
+		--minetest.chat_send_all(tostring(yVelocity))
 		player:set_physics_override({gravity=1})
 	end
 end

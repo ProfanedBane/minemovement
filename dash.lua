@@ -78,7 +78,7 @@ function doBoost(playerName)
 		end
 		
 		dash = vector.add(dash, playerPos)
-		player:set_physics_override({gravity=0.3}) -- To lessen stutter mid dash
+		--player:set_physics_override({gravity=0.3}) -- To lessen stutter mid dash
 		smoothMove(playerName, dash, 30, 0.4)
 		return true
 	end
@@ -96,6 +96,10 @@ function smoothMove(playerName, pos, steps, delay)
 		local jumpLength = vector.divide(vector.subtract(pos, playerPos), steps)
 		local jump = 0
 		local iInterval = 0
+		minetest.sound_play("whoosh", {
+			to_player = player,
+			gain = 0.3,
+		})
 			for i = 1, steps do
 				jump = vector.add(playerPos,(vector.multiply(jumpLength,i)))
 				iInterval = interval * i
@@ -109,7 +113,7 @@ function doMove(playerName, jump, endPos)
 	
 	if players[playerName] then
 		if vector.equals(jump, endPos) then
-			player:set_physics_override({gravity=1}) -- To reset the physics set before SmoothMove()
+			--player:set_physics_override({gravity=1}) -- To reset the physics set before SmoothMove()
 		end
 		player:move_to(jump, false)
 	end
