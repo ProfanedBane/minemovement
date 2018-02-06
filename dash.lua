@@ -4,7 +4,7 @@ Airdash manager
 
 --TODO: JUICE THIS BADBOY UP
 
-COOLDOWNTIME = 1
+COOLDOWNTIME = 0
 DASHDISTANCE = 10 -- In blocks
 
 local players = {}
@@ -58,7 +58,7 @@ function doBoost(playerName)
 		local testPos = playerPos
 		testPos.y = testPos.y + 1.5
 		local landPoint = vector.add(dash, playerPos)
-		local lineSight, lineLand = minetest.line_of_sight(playerPos, landPoint, 1)
+		local lineSight, lineLand = minetest.line_of_sight(playerPos, landPoint, 0.01) --high precision to prevent movement through diagonal barriers
 		if lineSight == false then
 			local vectorDiff = vector.subtract(playerPos, lineLand)
 			vectorDiff = vector.length(vectorDiff) - 1
@@ -72,12 +72,27 @@ function doBoost(playerName)
 		-- Sometimes the game spawns us below where we gotta be, this tries to check for that
 		local yTest = dash
 		yTest.y = yTest.y - 1.1
+		yTest = vector.round(vector.add(yTest, playerPos))
+		local yTestNode = minetest.get_node(yTest)
 		
-		if minetest.get_node(yTest) ~= "default:air" then
+		if yTestNode.name ~= "air" then
 			dash.y = dash.y + 1.1
 		end
 		
-		dash = vector.add(dash, playerPos)
+		--[[
+		-- Actually let's also look for blocks where our head is, or blocks in general.
+		yTest = dash
+		yTest.y = yTest.y
+		yTest = vector.round(vector.add(yTest, playerPos))
+		yTestNode = minetest.get_node(yTest)
+		
+		if yTestNode.name ~= "air" then
+			minetest.chat_send_all(yTestNode.name)
+			return false --invalid move
+		end
+		]]
+		
+		dash = vector.round(vector.add(dash, playerPos)) --rounded to prevent phasing into blocks
 		--player:set_physics_override({gravity=0.3}) -- To lessen stutter mid dash
 		smoothMove(playerName, dash, 30, 0.4)
 		return true
