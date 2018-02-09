@@ -1,10 +1,11 @@
 --[[
 Airdash manager
 ]]
-
+--TODO: Fix slight vertical phasing
+--TODO: Fix moving into positions where a block is in the top half of the player body
 --TODO: JUICE THIS BADBOY UP
 
-COOLDOWNTIME = 0
+COOLDOWNTIME = 0 -- In gameticks
 DASHDISTANCE = 10 -- In blocks
 
 local players = {}
@@ -50,15 +51,15 @@ function doBoost(playerName)
 	if players[playerName] then
 		players[playerName]["lastBoost"] = gameTime
 		local playerPos = player:get_pos()
+		playerPos.y = playerPos.y + 1.5 -- for some reason this makes everything work better
 		local playerCamDir = vector.normalize(player:get_look_dir())
 		
 		local dash = vector.multiply(playerCamDir, DASHDISTANCE)
 		
 		-- Check if we hit anything on the way
-		local testPos = playerPos
-		testPos.y = testPos.y + 1.5
+		local testPos = vector.new(playerPos) -- use vector.new() else it's a reference and that mucks everything up
 		local landPoint = vector.add(dash, playerPos)
-		local lineSight, lineLand = minetest.line_of_sight(playerPos, landPoint, 0.01)
+		local lineSight, lineLand = minetest.line_of_sight(playerPos, landPoint, 0.01) -- high precision to prevent movement through diagonal barriers
 		if lineSight == false then
 			local vectorDiff = vector.subtract(playerPos, lineLand)
 			vectorDiff = vector.length(vectorDiff) - 1
@@ -69,18 +70,10 @@ function doBoost(playerName)
 			dash = vector.multiply(playerCamDir, vectorDiff)
 		end
 		
-		-- Sometimes the game spawns us below where we gotta be, this tries to check for that
-		local yTest = dash
-		yTest.y = yTest.y - 1.1
-		
-		if minetest.get_node(yTest) ~= "default:air" then
-			dash.y = dash.y + 1.1
-		end
-		
 		dash = vector.add(dash, playerPos)
+		-- round to prevent phasing into blocks
 		dash.x = round(dash.x)
 		dash.z = round(dash.z)
-		player:set_physics_override({gravity=0.3}) -- To lessen stutter mid dash
 		smoothMove(playerName, dash, 30, 0.4)
 		return true
 	end
@@ -111,7 +104,7 @@ function doMove(playerName, jump, endPos)
 	
 	if players[playerName] then
 		if vector.equals(jump, endPos) then
-			player:set_physics_override({gravity=1}) -- To reset the physics set before SmoothMove()
+			--do anything we need to do at the end of the move
 		end
 		player:move_to(jump, false)
 	end
