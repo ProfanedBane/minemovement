@@ -14,7 +14,8 @@ minetest.register_on_joinplayer(function(player)
 	local playerName = player:get_player_name()
 
 	players[playerName] = {
-		lastBoost = 0 
+		lastBoost = 0, 
+		move_keyframe = 0
 	}
 end)
 
@@ -70,11 +71,14 @@ function doBoost(playerName)
 			dash = vector.multiply(playerCamDir, vectorDiff)
 		end
 		
-		dash = vector.add(dash, playerPos)
+		local finalDash = vector.add(dash, playerPos)
 		-- round to prevent phasing into blocks
-		dash.x = round(dash.x)
-		dash.z = round(dash.z)
-		smoothMove(playerName, dash, 30, 0.4)
+		finalDash.y = (round(finalDash.y) - 0.5)
+		finalDash.x = round(finalDash.x)
+		finalDash.z = round(finalDash.z)
+		minetest.chat_send_all(minetest.pos_to_string(finalDash))
+		players[playerName]["move_keyframe"] = 0
+		smoothMove(playerName, finalDash, 15, 0.4)
 		return true
 	end
 	return false
@@ -94,19 +98,25 @@ function smoothMove(playerName, pos, steps, delay)
 			for i = 1, steps do
 				jump = vector.add(playerPos,(vector.multiply(jumpLength,i)))
 				iInterval = interval * i
-				minetest.after(iInterval, doMove, playerName, jump, pos)
+				minetest.after(iInterval, doMove, playerName, jump, pos, i)
 			end
 	end
 end
 
-function doMove(playerName, jump, endPos)
+function doMove(playerName, jump, endPos, keyframe)
 	local player = minetest.get_player_by_name(playerName)
 	
 	if players[playerName] then
+		-- In Minetest, the flow of time is distorted. The flow of time itself is convoluted; with keyframes centuries old phasing in and out. 
+		if players[playerName]["move_keyframe"] > keyframe then
+			return false -- disregard misordered frames
+		end
+		player:move_to(jump, true)
+		players[playerName]["move_keyframe"] = keyframe
 		if vector.equals(jump, endPos) then
 			--do anything we need to do at the end of the move
+			players[playerName]["move_keyframe"] = keyframe + 1
 		end
-		player:move_to(jump, false)
 	end
 
 end
