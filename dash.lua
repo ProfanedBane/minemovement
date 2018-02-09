@@ -50,78 +50,52 @@ function doBoost(playerName)
 	if players[playerName] then
 		players[playerName]["lastBoost"] = gameTime
 		local playerPos = player:get_pos()
-		--local camPos = vector.new(playerPos)
-		--camPos.y = camPos.y + 1.5 --moves position to the camera
-		minetest.chat_send_all(minetest.pos_to_string(playerPos))
 		local playerCamDir = vector.normalize(player:get_look_dir())
 		
 		local dash = vector.multiply(playerCamDir, DASHDISTANCE)
 		
 		-- Check if we hit anything on the way
-		minetest.chat_send_all(minetest.pos_to_string(dash))
 		local landPoint = vector.add(dash, playerPos)
 		local lineSight, lineLand = minetest.line_of_sight(playerPos, landPoint, 0.01) --high precision to prevent movement through diagonal barriers
 		
-		--minetest.spawn_item(playerPos, "leaves")
-		--minetest.spawn_item(landPoint, "leaves")
-		--minetest.spawn_item(lineLand, "leaves")
-		
 		if lineSight == false then
-			local vectorDiff = vector.subtract(playerPos, lineLand)
-			local vectorDiffLength = vector.length(vectorDiff) - 1
-			minetest.chat_send_all(minetest.pos_to_string(lineLand))
-			minetest.chat_send_all(tostring(vectorDiffLength))
-			if vectorDiffLength <= 0 then
+			local vectorDiff = vector.length(vector.subtract(playerPos, lineLand))
+			vectorDiff = vectorDiff - 1 --so we land outside the blockage ( TODO: doesn't work vertically)
+			if vectorDiff <= 0 then
 				return false
 			end
-			dash = vector.multiply(playerCamDir, vectorDiffLength)
+			dash = vector.multiply(playerCamDir, vectorDiff)
 		end
-		
-		--increased LoS precision fixes this???
 
 		-- Sometimes the game spawns us below where we gotta be, this tries to check for that
-		--minetest.chat_send_all(minetest.pos_to_string(dash))
 		local yTest = vector.new(dash) -- Have to use 'vector.new()' while duplicating vectors, else I believe it's a reference
-		--minetest.chat_send_all(minetest.pos_to_string(dash))
-		yTest.y = yTest.y - 1.5
-		--minetest.chat_send_all(minetest.pos_to_string(dash))
+		yTest.y = yTest.y - 1.5 -- Move from the player camera to the player's feet
 		yTest = vector.add(yTest, playerPos)
-		minetest.spawn_item(yTest, "wood")
 		local yTestNode = minetest.get_node(yTest)
 		local yTestWalkable = minetest.registered_nodes[yTestNode.name].walkable
 		
 		if yTestWalkable == true then
-			minetest.chat_send_all("meme0")
 			dash.y = dash.y + 1
 		end
 		
 		
 		-- Actually let's also look for blocks where our head is, or blocks in general.
-		--minetest.chat_send_all(minetest.pos_to_string(dash))
-		--minetest.chat_send_all(minetest.pos_to_string(dash))
 		yTest = vector.new(dash) -- Have to use 'vector.new()' while duplicating vectors, else I believe it's a reference
-		--minetest.chat_send_all(minetest.pos_to_string(dash))
-		--minetest.chat_send_all(minetest.pos_to_string(dash))
-		
-		--yTest.y = yTest.y + 1.0
-		--minetest.chat_send_all(minetest.pos_to_string(dash))
-		--minetest.chat_send_all(minetest.pos_to_string(dash))
 		yTest = vector.add(yTest, playerPos)
-		minetest.spawn_item(yTest, "leaves")
 		yTestNode = minetest.get_node(yTest)
 		yTestWalkable = minetest.registered_nodes[yTestNode.name].walkable
-		--minetest.chat_send_all(tostring(yTestWalkable))
+
 		if yTestNode.walkable  == true then
-			minetest.chat_send_all("memes")
 			return false --invalid move
 		end
 		
-		--minetest.chat_send_all(minetest.pos_to_string(dash))
 		dash = vector.add(dash, playerPos)
+		-- Rounded to prevent phasing into blocks.
 		dash.x = round(dash.x)
 		dash.z = round(dash.z)
-		--player:set_physics_override({gravity=0.3}) -- To lessen stutter mid dash
+
 		smoothMove(playerName, dash, 30, 0.4)
+		
 		return true
 	end
 	return false
