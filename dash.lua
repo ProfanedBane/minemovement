@@ -50,49 +50,76 @@ function doBoost(playerName)
 	if players[playerName] then
 		players[playerName]["lastBoost"] = gameTime
 		local playerPos = player:get_pos()
+		--local camPos = vector.new(playerPos)
+		--camPos.y = camPos.y + 1.5 --moves position to the camera
+		minetest.chat_send_all(minetest.pos_to_string(playerPos))
 		local playerCamDir = vector.normalize(player:get_look_dir())
 		
 		local dash = vector.multiply(playerCamDir, DASHDISTANCE)
 		
 		-- Check if we hit anything on the way
-		local testPos = playerPos
-		testPos.y = testPos.y + 1.5
+		minetest.chat_send_all(minetest.pos_to_string(dash))
 		local landPoint = vector.add(dash, playerPos)
 		local lineSight, lineLand = minetest.line_of_sight(playerPos, landPoint, 0.01) --high precision to prevent movement through diagonal barriers
+		
+		--minetest.spawn_item(playerPos, "leaves")
+		--minetest.spawn_item(landPoint, "leaves")
+		--minetest.spawn_item(lineLand, "leaves")
+		
 		if lineSight == false then
 			local vectorDiff = vector.subtract(playerPos, lineLand)
-			vectorDiff = vector.length(vectorDiff) - 1
-			minetest.chat_send_all(tostring(vectorDiff))
-			if vectorDiff <= 0 then
+			local vectorDiffLength = vector.length(vectorDiff) - 1
+			minetest.chat_send_all(minetest.pos_to_string(lineLand))
+			minetest.chat_send_all(tostring(vectorDiffLength))
+			if vectorDiffLength <= 0 then
 				return false
 			end
-			dash = vector.multiply(playerCamDir, vectorDiff)
+			dash = vector.multiply(playerCamDir, vectorDiffLength)
 		end
 		
+		--increased LoS precision fixes this???
+
 		-- Sometimes the game spawns us below where we gotta be, this tries to check for that
-		local yTest = dash
-		yTest.y = yTest.y - 1.1
-		yTest = vector.round(vector.add(yTest, playerPos))
+		--minetest.chat_send_all(minetest.pos_to_string(dash))
+		local yTest = vector.new(dash) -- Have to use 'vector.new()' while duplicating vectors, else I believe it's a reference
+		--minetest.chat_send_all(minetest.pos_to_string(dash))
+		yTest.y = yTest.y - 1.5
+		--minetest.chat_send_all(minetest.pos_to_string(dash))
+		yTest = vector.add(yTest, playerPos)
+		minetest.spawn_item(yTest, "wood")
 		local yTestNode = minetest.get_node(yTest)
+		local yTestWalkable = minetest.registered_nodes[yTestNode.name].walkable
 		
-		if yTestNode.name ~= "air" then
-			dash.y = dash.y + 1.1
+		if yTestWalkable == true then
+			minetest.chat_send_all("meme0")
+			dash.y = dash.y + 1
 		end
 		
-		--[[
-		-- Actually let's also look for blocks where our head is, or blocks in general.
-		yTest = dash
-		yTest.y = yTest.y
-		yTest = vector.round(vector.add(yTest, playerPos))
-		yTestNode = minetest.get_node(yTest)
 		
-		if yTestNode.name ~= "air" then
-			minetest.chat_send_all(yTestNode.name)
+		-- Actually let's also look for blocks where our head is, or blocks in general.
+		--minetest.chat_send_all(minetest.pos_to_string(dash))
+		--minetest.chat_send_all(minetest.pos_to_string(dash))
+		yTest = vector.new(dash) -- Have to use 'vector.new()' while duplicating vectors, else I believe it's a reference
+		--minetest.chat_send_all(minetest.pos_to_string(dash))
+		--minetest.chat_send_all(minetest.pos_to_string(dash))
+		
+		--yTest.y = yTest.y + 1.0
+		--minetest.chat_send_all(minetest.pos_to_string(dash))
+		--minetest.chat_send_all(minetest.pos_to_string(dash))
+		yTest = vector.add(yTest, playerPos)
+		minetest.spawn_item(yTest, "leaves")
+		yTestNode = minetest.get_node(yTest)
+		yTestWalkable = minetest.registered_nodes[yTestNode.name].walkable
+		--minetest.chat_send_all(tostring(yTestWalkable))
+		if yTestNode.walkable  == true then
+			minetest.chat_send_all("memes")
 			return false --invalid move
 		end
-		]]
 		
-		dash = vector.round(vector.add(dash, playerPos)) --rounded to prevent phasing into blocks
+		--minetest.chat_send_all(minetest.pos_to_string(dash))
+		dash = vector.add(dash, playerPos)
+		dash.x = round(dash.x)
+		dash.z = round(dash.z)
 		--player:set_physics_override({gravity=0.3}) -- To lessen stutter mid dash
 		smoothMove(playerName, dash, 30, 0.4)
 		return true
@@ -134,4 +161,8 @@ function doMove(playerName, jump, endPos)
 	end
 
 end
-	
+
+function round(input)
+	local output = input + 0.5 - (input + 0.5) % 1
+	return output
+end
