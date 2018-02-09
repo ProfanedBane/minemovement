@@ -7,6 +7,7 @@ Airdash manager
 
 COOLDOWNTIME = 0 -- In gameticks
 DASHDISTANCE = 10 -- In blocks
+HEIGHTMODIFIER = 1.5 -- Add to the line of sight check's y level
 
 local players = {}
 
@@ -52,13 +53,13 @@ function doBoost(playerName)
 	if players[playerName] then
 		players[playerName]["lastBoost"] = gameTime
 		local playerPos = player:get_pos()
-		playerPos.y = playerPos.y + 1.5 -- for some reason this makes everything work better
+		playerPos.y = playerPos.y + HEIGHTMODIFIER -- for some reason this makes everything work better
 		local playerCamDir = vector.normalize(player:get_look_dir())
 		
 		local dash = vector.multiply(playerCamDir, DASHDISTANCE)
 		
 		-- Check if we hit anything on the way
-		local testPos = vector.new(playerPos) -- use vector.new() else it's a reference and that mucks everything up
+		-- First check leg-level
 		local landPoint = vector.add(dash, playerPos)
 		local lineSight, lineLand = minetest.line_of_sight(playerPos, landPoint, 0.01) -- high precision to prevent movement through diagonal barriers
 		if lineSight == false then
@@ -71,14 +72,24 @@ function doBoost(playerName)
 			dash = vector.multiply(playerCamDir, vectorDiff)
 		end
 		
-		local finalDash = vector.add(dash, playerPos)
+		-- Now check eye-level
+		landPoint = vector.add(dash, playerPos)
+		landPoint.y = landPoint.y + 1
+		lineSight, lineLand = minetest.line_of_sight(playerPos, landPoint, 0.01) -- high precision to prevent movement through diagonal barriers
+		if lineSight == false then
+			minetest.chat_send_all("testing")
+			return false
+		end
+		
+		
+		dash = vector.add(dash, playerPos)
 		-- round to prevent phasing into blocks
-		finalDash.y = (round(finalDash.y) - 0.5)
-		finalDash.x = round(finalDash.x)
-		finalDash.z = round(finalDash.z)
-		minetest.chat_send_all(minetest.pos_to_string(finalDash))
-		players[playerName]["move_keyframe"] = 0
-		smoothMove(playerName, finalDash, 15, 0.4)
+		dash.y = (round(dash.y) - 0.5)
+		dash.x = round(dash.x)
+		dash.z = round(dash.z)
+		minetest.chat_send_all(minetest.pos_to_string(dash))
+		
+		smoothMove(playerName, dash, 15, 0.4)
 		return true
 	end
 	return false
@@ -90,6 +101,7 @@ function smoothMove(playerName, pos, steps, delay)
 	local player = minetest.get_player_by_name(playerName)
 	
 	if players[playerName] then
+		players[playerName]["move_keyframe"] = 0
 		local playerPos = player:get_pos()
 		local interval = delay / steps
 		local jumpLength = vector.divide(vector.subtract(pos, playerPos), steps)
