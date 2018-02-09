@@ -51,11 +51,18 @@ function doBoost(playerName)
 		players[playerName]["lastBoost"] = gameTime
 		local playerPos = player:get_pos()
 		local playerCamDir = vector.normalize(player:get_look_dir())
-		
 		local dash = vector.multiply(playerCamDir, DASHDISTANCE)
 		
-		-- Check if we hit anything on the way
+		-- Check if the initial destination is valid
 		local landPoint = vector.add(dash, playerPos)
+		local validMove, correction = verifyPosition(landPoint)
+		if validMove == false and correction ~= nil then
+			if verifyPosition(correction) == true then
+				landPoint = vector.new(correction)
+			end
+		end
+		
+		-- Check if we can see the destination
 		local lineSight, lineLand = minetest.line_of_sight(playerPos, landPoint, 0.01) --high precision to prevent movement through diagonal barriers
 		
 		if lineSight == false then
@@ -67,28 +74,6 @@ function doBoost(playerName)
 			dash = vector.multiply(playerCamDir, vectorDiff)
 		end
 
-		-- Sometimes the game spawns us below where we gotta be, this tries to check for that
-		local yTest = vector.new(dash) -- Have to use 'vector.new()' while duplicating vectors, else I believe it's a reference
-		yTest.y = yTest.y - 1.5 -- Move from the player camera to the player's feet
-		yTest = vector.add(yTest, playerPos)
-		local yTestNode = minetest.get_node(yTest)
-		local yTestWalkable = minetest.registered_nodes[yTestNode.name].walkable
-		
-		if yTestWalkable == true then
-			dash.y = dash.y + 1
-		end
-		
-		
-		-- Actually let's also look for blocks where our head is, or blocks in general.
-		yTest = vector.new(dash) -- Have to use 'vector.new()' while duplicating vectors, else I believe it's a reference
-		yTest = vector.add(yTest, playerPos)
-		yTestNode = minetest.get_node(yTest)
-		yTestWalkable = minetest.registered_nodes[yTestNode.name].walkable
-
-		if yTestNode.walkable  == true then
-			return false --invalid move
-		end
-		
 		dash = vector.add(dash, playerPos)
 		-- Rounded to prevent phasing into blocks.
 		dash.x = round(dash.x)
@@ -99,6 +84,34 @@ function doBoost(playerName)
 		return true
 	end
 	return false
+end
+
+function verifyPosition(testPosition)
+
+	-- Sometimes the game spawns us below where we gotta be, this tries to check for that
+
+	local legTestPosition = vector.new(testPosition)
+	legTestPosition.y = legTestPosition.y - 1.5
+	local testNode = minetest.get_node(legTestPosition)
+	local testWalkable = minetest.registered_nodes[testNode.name].walkable
+	
+	if testWalkable == true then
+		local potentialCorrection = vector.new(testPosition)
+		potentialCorrection.y = potentialCorrection.y + 1.5
+		return false, potentialCorrection
+	end
+		
+	-- Actually let's also look for blocks where our head is, or blocks in general.
+	testNode = minetest.get_node(testPosition)
+	testWalkable = minetest.registered_nodes[testNode.name].walkable
+
+	if testNode.walkable  == true then
+		local potentialCorrection = nil
+		return false, potentialCorrection --invalid move
+	end
+		
+	return true, testPosition
+		
 end
 
 -- Interpolate move_to()
