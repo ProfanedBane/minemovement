@@ -2,10 +2,11 @@
 Airdash manager
 ]]
 --TODO: Fix slight vertical phasing
---TODO: Fix moving into positions where a block is in the top half of the player body
+--TODO: Fix phasing into blocks by placing one as you dash
+--TODO: Fix moving into positions where a block is in the top half of the player body: DONE(?)
 --TODO: JUICE THIS BADBOY UP
 
-COOLDOWNTIME = 0 -- In gameticks
+COOLDOWNTIME = 1 -- In gameticks
 DASHDISTANCE = 10 -- In blocks
 HEIGHTMODIFIER = 1.5 -- Add to the line of sight check's y level
 
@@ -59,38 +60,65 @@ function doBoost(playerName)
 		local dash = vector.multiply(playerCamDir, DASHDISTANCE)
 		
 		-- Check if we hit anything on the way
-		-- First check leg-level
-		local landPoint = vector.add(dash, playerPos)
-		local lineSight, lineLand = minetest.line_of_sight(playerPos, landPoint, 0.01) -- high precision to prevent movement through diagonal barriers
-		if lineSight == false then
-			local vectorDiff = vector.subtract(playerPos, lineLand)
-			vectorDiff = vector.length(vectorDiff) - 1
-			minetest.chat_send_all(tostring(vectorDiff))
-			if vectorDiff <= 0 then
-				return false
-			end
-			dash = vector.multiply(playerCamDir, vectorDiff)
-		end
-		
-		-- Now check eye-level
-		landPoint = vector.add(dash, playerPos)
-		landPoint.y = landPoint.y + 1
-		lineSight, lineLand = minetest.line_of_sight(playerPos, landPoint, 0.01) -- high precision to prevent movement through diagonal barriers
-		if lineSight == false then
-			minetest.chat_send_all("testing")
+		dash = verifyMove(playerPos, dash, playerCamDir)
+		if dash == false then
 			return false
 		end
-		
 		
 		dash = vector.add(dash, playerPos)
 		-- round to prevent phasing into blocks
 		dash.y = (round(dash.y) - 0.5)
 		dash.x = round(dash.x)
 		dash.z = round(dash.z)
-		minetest.chat_send_all(minetest.pos_to_string(dash))
 		
+		minetest.chat_send_all(minetest.pos_to_string(dash))
 		smoothMove(playerName, dash, 15, 0.4)
 		return true
+	end
+	return false
+end
+
+function verifyMove(startPos, moveVector, moveDir)
+
+	while vector.length(moveVector) > 0 do
+		
+		-- check where our feet are
+		local endPos = vector.add(moveVector, startPos)
+		-- if aiming up check the block below
+		if moveDir.y > 0 then
+			endPos.y = endPos.y - 1
+		end
+		
+		local lineSightA, lineLand = minetest.line_of_sight(startPos, endPos, 0.01) -- high precision to prevent movement through diagonal barriers
+		if lineSightA == false then
+			local vectorDiff = vector.subtract(startPos, lineLand)
+			vectorDiff = vector.length(vectorDiff) - 1
+			if round(vectorDiff) <= 0 then
+				break
+			end
+			moveVector = vector.multiply(moveDir, vectorDiff)
+		end
+			
+		-- Now check eye-level
+		endPos = vector.add(moveVector, startPos)
+		if moveDir.y <= 0 then
+			endPos.y = endPos.y + 1
+		end
+		
+		local lineSightB, lineLand = minetest.line_of_sight(startPos, endPos, 0.01) -- high precision to prevent movement through diagonal barriers
+		if lineSightB == false then
+			local vectorDiff = vector.subtract(startPos, lineLand)
+			vectorDiff = vector.length(vectorDiff) - 1
+			if round(vectorDiff) <= 0 then
+				break
+			end
+			moveVector = vector.multiply(moveDir, vectorDiff)
+		end
+		
+		if lineSightA == true and lineSightB == true then
+			return moveVector
+		end
+		
 	end
 	return false
 end
