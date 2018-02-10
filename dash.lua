@@ -6,7 +6,7 @@ Airdash manager
 --TODO: Fix moving into positions where a block is in the top half of the player body: DONE(?)
 --TODO: JUICE THIS BADBOY UP
 
-COOLDOWNTIME = 1 -- In gameticks
+COOLDOWNTIME = 1 -- In gametime (seconds)
 DASHDISTANCE = 10 -- In blocks
 HEIGHTMODIFIER = 1.5 -- Add to the line of sight check's y level
 
@@ -64,7 +64,6 @@ function doBoost(playerName)
 		if dash == false then
 			return false
 		end
-		
 		dash = vector.add(dash, playerPos)
 		-- round to prevent phasing into blocks
 		dash.y = (round(dash.y) - 0.5)
@@ -89,9 +88,9 @@ function verifyMove(startPos, moveVector, moveDir)
 			endPos.y = endPos.y - 1
 		end
 		
-		local lineSightA, lineLand = minetest.line_of_sight(startPos, endPos, 0.01) -- high precision to prevent movement through diagonal barriers
+		local lineSightA, lineLandA = minetest.line_of_sight(startPos, endPos, 0.01) -- high precision to prevent movement through diagonal barriers
 		if lineSightA == false then
-			local vectorDiff = vector.subtract(startPos, lineLand)
+			local vectorDiff = vector.subtract(startPos, lineLandA)
 			vectorDiff = vector.length(vectorDiff) - 1
 			if round(vectorDiff) <= 0 then
 				break
@@ -105,9 +104,9 @@ function verifyMove(startPos, moveVector, moveDir)
 			endPos.y = endPos.y + 1
 		end
 		
-		local lineSightB, lineLand = minetest.line_of_sight(startPos, endPos, 0.01) -- high precision to prevent movement through diagonal barriers
+		local lineSightB, lineLandB = minetest.line_of_sight(startPos, endPos, 0.01) -- high precision to prevent movement through diagonal barriers
 		if lineSightB == false then
-			local vectorDiff = vector.subtract(startPos, lineLand)
+			local vectorDiff = vector.subtract(startPos, lineLandB)
 			vectorDiff = vector.length(vectorDiff) - 1
 			if round(vectorDiff) <= 0 then
 				break
@@ -135,11 +134,17 @@ function smoothMove(playerName, pos, steps, delay)
 		local jumpLength = vector.divide(vector.subtract(pos, playerPos), steps)
 		local jump = 0
 		local iInterval = 0
-			for i = 1, steps do
-				jump = vector.add(playerPos,(vector.multiply(jumpLength,i)))
-				iInterval = interval * i
-				minetest.after(iInterval, doMove, playerName, jump, pos, i)
-			end
+		minetest.sound_play("whoosh", {
+			to_player = player,
+			gain = 0.3,
+		})
+		
+		for i = 1, steps do
+			jump = vector.add(playerPos,(vector.multiply(jumpLength,i)))
+			iInterval = interval * i
+			minetest.after(iInterval, doMove, playerName, jump, pos, i)
+		end
+		
 	end
 end
 
