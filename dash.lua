@@ -70,7 +70,6 @@ function doBoost(playerName)
 		dash.x = round(dash.x)
 		dash.z = round(dash.z)
 		
-		minetest.chat_send_all(minetest.pos_to_string(dash))
 		smoothMove(playerName, dash, 15, 0.4)
 		return true
 	end
